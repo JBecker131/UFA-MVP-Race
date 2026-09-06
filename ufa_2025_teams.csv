@@ -1,0 +1,25 @@
+﻿team_id,abbrev,city,name,full_name,division,wins,losses,ties,standing
+union,CHI,Chicago,Union,Chicago Union,Central,12,1,0,1
+windchill,MIN,Minnesota,Wind Chill,Minnesota Wind Chill,Central,12,4,0,2
+radicals,MAD,Madison,Radicals,Madison Radicals,Central,7,6,0,3
+alleycats,IND,Indianapolis,AlleyCats,Indianapolis AlleyCats,Central,4,8,0,4
+thunderbirds,PIT,Pittsburgh,Thunderbirds,Pittsburgh Thunderbirds,Central,3,9,0,5
+mechanix,DET,Detroit,Mechanix,Detroit Mechanix,Central,1,11,0,6
+glory,BOS,Boston,Glory,Boston Glory,East,12,3,0,1
+breeze,DC,DC,Breeze,DC Breeze,East,8,6,0,2
+empire,NY,New York,Empire,New York Empire,East,7,6,0,3
+phoenix,PHI,Philadelphia,Phoenix,Philadelphia Phoenix,East,6,6,0,4
+royal,MTL,Montreal,Royal,Montreal Royal,East,4,8,0,5
+rush,TOR,Toronto,Rush,Toronto Rush,East,3,9,0,6
+hustle,ATL,Atlanta,Hustle,Atlanta Hustle,South,10,4,0,1
+sol,ATX,Austin,Sol,Austin Sol,South,9,4,0,2
+growlers,SD,San Diego,Growlers,San Diego Growlers,South,8,6,0,3
+flyers,CAR,Carolina,Flyers,Carolina Flyers,South,7,5,0,4
+aviators,LA,LA,Aviators,LA Aviators,South,3,9,0,5
+havoc,HTX,Houston,Havoc,Houston Havoc,South,2,10,0,6
+shred,SLC,Salt Lake,Shred,Salt Lake Shred,West,12,2,0,1
+spiders,OAK,Oakland,Spiders,Oakland Spiders,West,10,4,0,2
+apex,COL,Colorado,Apex,Colorado Apex,West,8,5,0,3
+cascades,SEA,Seattle,Cascades,Seattle Cascades,West,4,8,0,4
+steel,ORE,Oregon,Steel,Oregon Steel,West,3,9,0,5
+bighorns,LV,Vegas,Bighorns,Vegas Bighorns,West,0,12,0,6
