@@ -828,7 +828,7 @@ function App() {
         <div className="card-header row">
           <div>
             <h2 className="card-title">
-              {tab === "race" ? "Cumulative " + m.label.toLowerCase() + ", week by week"
+              {tab === "race" ? "Cumulative " + (mk === "mvp" ? "MVP Score" : m.label.toLowerCase()) + ", week by week"
                 : tab === "sheet" ? "Candidate stat sheet"
                 : "Compare two candidates"}
             </h2>
