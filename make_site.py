@@ -6,9 +6,15 @@ the file it publishes, so ufa-mvp-race.html is a fragment: no <html>, no <head>,
 no body margin reset. This script rebuilds those parts so the same markup works
 as an ordinary web page.
 
+It also bakes the Supabase URL and anon key from .env into the page, so the
+deployed site reads the season from Supabase rather than the frozen snapshot.
+Both are public values - the anon key is read-only under row-level security.
+
     python make_site.py      ->  site/index.html
 """
-import io, os, re
+import base64, io, json, os, re
+
+import env
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC  = os.path.join(HERE, "ufa-mvp-race.html")
@@ -26,6 +32,44 @@ RESET = """    <style>
       img { max-width: 100%; }
       [hidden] { display: none !important; }
     </style>"""
+
+
+def is_service_role(v):
+    """True if v is a Supabase key that can write. Cheap, no network."""
+    if v.startswith("sb_secret_"):
+        return True
+    parts = v.split(".")                      # legacy keys are unsigned-readable JWTs
+    if len(parts) != 3:
+        return False
+    try:
+        pad = parts[1] + "=" * (-len(parts[1]) % 4)
+        return json.loads(base64.urlsafe_b64decode(pad)).get("role") == "service_role"
+    except Exception:
+        return False
+
+
+def supabase_tag():
+    """<script> that hands the page its Supabase credentials, or a note if unset."""
+    cfg = env.load("SUPABASE_URL", "SUPABASE_ANON_KEY", required=False)
+    url, key = cfg["SUPABASE_URL"], cfg["SUPABASE_ANON_KEY"]
+    if not (url and key):
+        print("warning: SUPABASE_URL / SUPABASE_ANON_KEY unset in .env - "
+              "the page will render its build-time snapshot instead")
+        return "    <!-- no Supabase credentials at build time; see .env.example -->"
+
+    # Both values are about to be published in site/index.html, so refuse
+    # anything that isn't the pair we expect. Pasting the service_role key into
+    # either field would otherwise ship a write-capable credential to every
+    # visitor - the one mistake here that actually costs something.
+    if not url.startswith("https://") or "supabase" not in url:
+        raise SystemExit("SUPABASE_URL is not a project URL (expected "
+                         "https://<ref>.supabase.co) - refusing to publish it")
+    if is_service_role(key) or is_service_role(url):
+        raise SystemExit("that is the service_role key, not the anon key - "
+                         "refusing to publish it; check .env against .env.example")
+
+    return ('    <script>window.UFA_SUPABASE = %s;</script>'
+            % json.dumps({"url": url, "key": key}))
 
 
 def main():
@@ -53,11 +97,12 @@ def main():
         '    <meta property="og:description" content="%s">\n'
         '    <meta property="og:type" content="website">\n'
         '    <link rel="icon" href="%s">\n'
-        "%s\n%s\n"
+        "%s\n%s\n%s\n"
         "  </head>\n"
         "  <body>\n%s\n  </body>\n"
         "</html>\n"
-    ) % (title, DESCRIPTION, title, DESCRIPTION, FAVICON, head, RESET, body.strip())
+    ) % (title, DESCRIPTION, title, DESCRIPTION, FAVICON, head, RESET,
+         supabase_tag(), body.strip())
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     io.open(OUT, "w", encoding="utf-8", newline="\n").write(page)

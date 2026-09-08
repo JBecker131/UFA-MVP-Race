@@ -286,11 +286,75 @@ const { useState, useMemo } = React;
    backend.ufastats.com. Every counting stat here is real. The four counting
    races run the regular season (weeks 1-13); MVP Score runs the full season
    (weeks 1-16) and its weights are fitted - see the methodology note.
+
+   The season lives in Supabase - four tables, see supabase/schema.sql - and is
+   read at load time with the public anon key that make_site.py bakes in from
+   .env. The <script id="ufa-data"> blob below is the same dataset frozen at
+   build time; it only renders when Supabase is unreachable or unconfigured,
+   which is what keeps the page working as a Claude Artifact (the Artifact
+   sandbox blocks outbound fetches).
    ========================================================================= */
-const DATA    = JSON.parse(document.getElementById("ufa-data").textContent);
-const PLAYERS = DATA.players;
-const METRICS = DATA.metrics;
-const BY_ID   = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
+const SB = window.UFA_SUPABASE || {};
+
+/* filled in by boot(), before the first render */
+let DATA, PLAYERS, METRICS, BY_ID;
+
+async function sbSelect(table, order) {
+  const res = await fetch(SB.url.replace(/\/$/, "") + "/rest/v1/" + table +
+                          "?select=*&order=" + order, {
+    headers: { apikey: SB.key, Authorization: "Bearer " + SB.key },
+  });
+  if (!res.ok) throw new Error(table + ": " + res.status + " " + (await res.text()));
+  return res.json();
+}
+
+/* Supabase columns are snake_case; the components below want the compact keys
+   the build script has always used, so reshape once here. */
+async function fromSupabase() {
+  const [meta, metrics, players, awards] = await Promise.all([
+    sbSelect("season_meta", "season.desc"),
+    sbSelect("metrics", "sort_order.asc"),
+    sbSelect("players", "mvp_score.desc"),
+    sbSelect("awards", "sort_order.asc"),
+  ]);
+  const s = meta[0];
+  if (!s) throw new Error("season_meta is empty - run push_supabase.py");
+  return {
+    weeks: s.weeks, regWeeks: s.reg_weeks, playoffFrom: s.playoff_from,
+    leagueN: s.league_n, games: s.games, gamesFull: s.games_full, fit: s.fit,
+    metrics: metrics.map(m => ({
+      k: m.k, label: m.label, short: m.short, desc: m.descr,
+      ceil: Number(m.ceil), weeks: m.weeks, season: m.season_scope,
+    })),
+    players: players.map(p => ({
+      id: p.id, first: p.first_name, last: p.last_name, num: p.jersey,
+      team: p.team, abbr: p.abbrev, div: p.division, record: p.record,
+      gp: p.games_played, gpFull: p.games_played_full,
+      g: p.goals, a: p.assists, ha: p.hockey_assists, blocks: p.blocks,
+      cmp: p.completions, att: p.throw_attempts, to: p.turnovers,
+      ty: p.yards_thrown, ry: p.yards_received,
+      pm: p.plus_minus, sc: p.total_scores, mvp: Number(p.mvp_score),
+      rank: p.ranks, trend: p.trend, img: p.headshot,
+    })),
+    awards: awards.map(a => ({ a: a.award, p: a.player_id, note: a.note })),
+  };
+}
+
+const embedded = () => JSON.parse(document.getElementById("ufa-data").textContent);
+
+async function loadData() {
+  if (!SB.url || !SB.key) {
+    console.info("[ufa] no Supabase credentials - rendering the build-time snapshot");
+    return embedded();
+  }
+  try {
+    return await fromSupabase();
+  } catch (err) {
+    console.warn("[ufa] Supabase unavailable, falling back to the snapshot:", err);
+    return embedded();
+  }
+}
+
 const SLOTS   = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7"];
 const TAGS    = { tdecraene:"MVP", tjohnson1:"DPOY", ddemarre:"ROY" };
 const MVP     = "tdecraene";
@@ -869,5 +933,13 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+async function boot() {
+  DATA    = await loadData();
+  PLAYERS = DATA.players;
+  METRICS = DATA.metrics;
+  BY_ID   = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+}
+
+boot();
 </script>
