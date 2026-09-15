@@ -1,7 +1,12 @@
 .vercel/
 __pycache__/
+seasons/
 *.pyc
 
 .vercel
 .env*
 !.env.example
+mvp_models.joblib
+
+# Supabase CLI scratch dir
+supabase/.temp/

@@ -8,7 +8,7 @@ without re-downloading the season.
 Writes with the service_role key, which bypasses row-level security, and upserts
 so re-running is safe.
 
-    python push_supabase.py        ->  season_meta, metrics, players, awards
+    python push_supabase.py        ->  season_meta, metrics, players, awards, projections
 """
 import io, os, re, json, urllib.request, urllib.error
 
@@ -29,6 +29,17 @@ def dataset():
     if not m:
         raise SystemExit("no dataset found - run build2.py first")
     print("source: embedded blob in ufa-mvp-race.html")
+    return json.loads(m.group(1))
+
+
+def projections():
+    """The next-season projections blob, or None if export_projections.py hasn't run."""
+    html = io.open(HTML_SRC, encoding="utf-8").read()
+    m = re.search(r'<script type="application/json" id="ufa-projections">(.*?)</script>',
+                  html, re.S)
+    if not m:
+        print("note: no projections blob yet - run export_projections.py to include them")
+        return None
     return json.loads(m.group(1))
 
 
@@ -81,6 +92,18 @@ def main():
     post(url, key, "awards", [{
         "award": a["a"], "sort_order": i, "player_id": a["p"], "note": a.get("note", ""),
     } for i, a in enumerate(d["awards"])], "award")
+
+    pr = projections()
+    if pr:
+        post(url, key, "projections", [{
+            "id": p["id"], "first_name": p["first"], "last_name": p["last"],
+            "abbrev": p["abbr"], "team": p["team"], "division": p["div"],
+            "record": p.get("record", ""), "points_played": p["pts"],
+            "prev_score": p["prev"], "projected_score": p["proj"],
+            "chance": p["chance"], "projected_rank": p["rank"],
+            "from_season": pr["from"], "to_season": pr["to"],
+            "min_points": pr["minPoints"],
+        } for p in pr["players"]], "id")
 
     print("\nloaded season %d into %s" % (SEASON, url))
 
